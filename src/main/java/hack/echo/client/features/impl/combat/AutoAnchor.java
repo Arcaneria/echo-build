@@ -93,7 +93,7 @@ public class AutoAnchor extends Feature {
 
     public AutoAnchor() {
         super(new FeatureInfo(Concat.of("Auto Anchor"), Concat.of("Automates anchor charge/explode cycles with smart POV-based safe/normal path selection"), Category.COMBAT));
-        this.settings.addAll(
+        this.settings.addAll(java.util.List.of(
             povThreshold,
             povDegrees,
             decisionWindow,
@@ -107,7 +107,7 @@ public class AutoAnchor extends Feature {
             fallbackSlot,
             restoreSlotOnCancel,
             confirmationTimeout
-        );
+        ));
     }
 
     @EventSubscribe
@@ -183,8 +183,8 @@ public class AutoAnchor extends Feature {
     @EventSubscribe
     public void onMouseUpdate(MouseUpdateEvent event) {
         if (currentState == State.WATCH_POV) {
-            float currentYaw = mc.gameRenderer.getCamera().getYaw();
-            float currentPitch = mc.gameRenderer.getCamera().getPitch();
+            float currentYaw = mc.gameRenderer.getMainCamera().getYRot();
+            float currentPitch = mc.gameRenderer.getMainCamera().getXRot();
             float deltaYaw = Mth.wrapDegrees(currentYaw - startYaw);
             float deltaPitch = currentPitch - startPitch;
             accumulatedYawDelta += Math.abs(deltaYaw);
@@ -246,8 +246,8 @@ public class AutoAnchor extends Feature {
             currentState = State.WATCH_POV;
             stateTimer = 0;
             decisionTimer = decisionWindow.getValue();
-            startYaw = mc.gameRenderer.getCamera().getYaw();
-            startPitch = mc.gameRenderer.getCamera().getPitch();
+            startYaw = mc.gameRenderer.getMainCamera().getYRot();
+            startPitch = mc.gameRenderer.getMainCamera().getXRot();
             accumulatedYawDelta = 0.0f;
             accumulatedPitchDelta = 0.0f;
         }
