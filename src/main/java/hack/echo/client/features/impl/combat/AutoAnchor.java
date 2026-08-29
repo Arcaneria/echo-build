@@ -183,8 +183,8 @@ public class AutoAnchor extends Feature {
     @EventSubscribe
     public void onMouseUpdate(MouseUpdateEvent event) {
         if (currentState == State.WATCH_POV) {
-            float currentYaw = mc.gameRenderer.getMainCamera().getYRot();
-            float currentPitch = mc.gameRenderer.getMainCamera().getXRot();
+            float currentYaw = mc.player.getYRot();
+            float currentPitch = mc.player.getXRot();
             float deltaYaw = Mth.wrapDegrees(currentYaw - startYaw);
             float deltaPitch = currentPitch - startPitch;
             accumulatedYawDelta += Math.abs(deltaYaw);
@@ -246,8 +246,8 @@ public class AutoAnchor extends Feature {
             currentState = State.WATCH_POV;
             stateTimer = 0;
             decisionTimer = decisionWindow.getValue();
-            startYaw = mc.gameRenderer.getMainCamera().getYRot();
-            startPitch = mc.gameRenderer.getMainCamera().getXRot();
+            startYaw = mc.player.getYRot();
+            startPitch = mc.player.getXRot();
             accumulatedYawDelta = 0.0f;
             accumulatedPitchDelta = 0.0f;
         }
