@@ -14,11 +14,8 @@ import hack.echo.client.features.settings.impl.IntSetting;
 import hack.echo.client.features.settings.impl.ModeSetting;
 import hack.echo.client.features.settings.impl.RangeSetting;
 import hack.echo.client.handlers.InputHandler;
-import hack.echo.client.handlers.RotationHandler;
 import hack.echo.client.handlers.impl.SwapStateManager;
-import hack.echo.client.api.MinecraftCompat;
 import hack.echo.client.utils.blocks.BlockUtils;
-import hack.echo.client.utils.combat.ExplosionUtils;
 import hack.echo.client.utils.inventory.InventoryUtils;
 import hack.echo.client.utils.rotation.RotationConvergenceTracker;
 import hack.echo.client.utils.rotation.RotationUtils;
@@ -26,17 +23,10 @@ import hack.echo.client.utils.strings.Concat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.RespawnAnchorBlock;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import java.util.function.Predicate;
 
 /**
  * Smart Auto Anchor - Automates anchor charge/explode cycles with smart POV-based safe/normal path selection.
@@ -209,7 +199,7 @@ public class AutoAnchor extends Feature {
 
     private void handleWaitAnchor() {
         stateTimer++;
-        if (stateTimer > confirmationTimeout.getIntValue()) {
+        if (stateTimer > confirmationTimeout.getValue()) {
             reset();
             return;
         }
@@ -227,7 +217,7 @@ public class AutoAnchor extends Feature {
             return;
         }
         stateTimer++;
-        if (stateTimer < chargeDelay.getIntValue()) {
+        if (stateTimer < chargeDelay.getValue()) {
             return;
         }
         if (SwapStateManager.isOwnerActive(this)) {
@@ -247,7 +237,7 @@ public class AutoAnchor extends Feature {
 
     private void handleConfirmCharge() {
         stateTimer++;
-        if (stateTimer > confirmationTimeout.getIntValue()) {
+        if (stateTimer > confirmationTimeout.getValue()) {
             reset();
             return;
         }
@@ -255,7 +245,7 @@ public class AutoAnchor extends Feature {
             convergenceTracker.reset();
             currentState = State.WATCH_POV;
             stateTimer = 0;
-            decisionTimer = decisionWindow.getIntValue();
+            decisionTimer = decisionWindow.getValue();
             startYaw = mc.gameRenderer.getCamera().getYaw();
             startPitch = mc.gameRenderer.getCamera().getPitch();
             accumulatedYawDelta = 0.0f;
@@ -267,7 +257,7 @@ public class AutoAnchor extends Feature {
         decisionTimer--;
         if (decisionTimer <= 0) {
             float totalDelta = (float) Math.sqrt(accumulatedYawDelta * accumulatedYawDelta + accumulatedPitchDelta * accumulatedPitchDelta);
-            if (povThreshold.isEnabled() && totalDelta >= povDegrees.getFloatValue()) {
+            if (povThreshold.getValue() && totalDelta >= povDegrees.getValue()) {
                 usePathSafe = true;
                 startSafePath();
             } else {
@@ -303,7 +293,7 @@ public class AutoAnchor extends Feature {
             return;
         }
         stateTimer++;
-        if (stateTimer < safePlaceDelay.getRandom()) {
+        if (stateTimer < (int) safePlaceDelay.getRandom()) {
             return;
         }
         if (SwapStateManager.isOwnerActive(this)) {
@@ -323,7 +313,7 @@ public class AutoAnchor extends Feature {
 
     private void handleConfirmSafeBlock() {
         stateTimer++;
-        if (stateTimer > confirmationTimeout.getIntValue()) {
+        if (stateTimer > confirmationTimeout.getValue()) {
             reset();
             return;
         }
@@ -347,7 +337,7 @@ public class AutoAnchor extends Feature {
             return;
         }
         stateTimer++;
-        if (stateTimer < slotDelay.getRandom()) {
+        if (stateTimer < (int) slotDelay.getRandom()) {
             return;
         }
         if (SwapStateManager.isOwnerActive(this)) {
@@ -367,7 +357,7 @@ public class AutoAnchor extends Feature {
             return;
         }
         stateTimer++;
-        if (stateTimer < detonationDelay.getRandom()) {
+        if (stateTimer < (int) detonationDelay.getRandom()) {
             return;
         }
         Vec3 eyePos = mc.player.getEyePosition(1.0f);
@@ -384,10 +374,10 @@ public class AutoAnchor extends Feature {
         }
         if (!convergenceTracker.isDuplicateRotPlaceSafe(1.0f)) {
             RotationUtils.aim(this)
-                .priority(100)
+                .priority(EventSubscribe.Priority.NORMAL)
                 .silent()
                 .speed(180.0f)
-                .aimType(RotationUtils.AimType.SMOOTH)
+                .aimType(RotationUtils.AimType.REGULAR)
                 .to(aimPoint);
         }
         convergenceTracker.update();
@@ -398,9 +388,9 @@ public class AutoAnchor extends Feature {
                 Vec3 anchorCenter = Vec3.atCenterOf(targetAnchorPos);
                 double dist = playerEye.distanceTo(anchorCenter);
                 if (dist <= mc.player.blockInteractionRange()) {
-                    BlockHitResult hitResult = BlockUtils.findPlacementHit(targetAnchorPos, false);
-                    if (hitResult != null) {
-                        BlockUtils.interactWithBlock(hitResult, true);
+                    BlockUtils.PlacementHit placementHit = BlockUtils.findPlacementHit(targetAnchorPos, false);
+                    if (placementHit != null) {
+                        BlockUtils.interactWithBlock(placementHit.hitResult(), true);
                         interactionPerformedThisTick = true;
                         actionCooldown = getActionGap();
                         convergenceTracker.markInteraction();
@@ -436,9 +426,9 @@ public class AutoAnchor extends Feature {
         Vec3 anchorCenter = Vec3.atCenterOf(targetAnchorPos);
         double dist = playerEye.distanceTo(anchorCenter);
         if (dist <= mc.player.blockInteractionRange()) {
-            BlockHitResult hitResult = BlockUtils.findPlacementHit(targetAnchorPos, false);
-            if (hitResult != null) {
-                BlockUtils.interactWithBlock(hitResult, true);
+            BlockUtils.PlacementHit placementHit = BlockUtils.findPlacementHit(targetAnchorPos, false);
+            if (placementHit != null) {
+                BlockUtils.interactWithBlock(placementHit.hitResult(), true);
                 interactionPerformedThisTick = true;
                 convergenceTracker.markInteraction();
             }
@@ -458,9 +448,9 @@ public class AutoAnchor extends Feature {
         Vec3 safeCenter = Vec3.atCenterOf(safePos);
         double dist = playerEye.distanceTo(safeCenter);
         if (dist <= mc.player.blockInteractionRange()) {
-            BlockHitResult hitResult = BlockUtils.findPlacementHit(safePos, false);
-            if (hitResult != null) {
-                BlockUtils.interactWithBlock(hitResult, true);
+            BlockUtils.PlacementHit placementHit = BlockUtils.findPlacementHit(safePos, false);
+            if (placementHit != null) {
+                BlockUtils.interactWithBlock(placementHit.hitResult(), true);
                 interactionPerformedThisTick = true;
                 convergenceTracker.markInteraction();
             }
@@ -500,13 +490,13 @@ public class AutoAnchor extends Feature {
     }
 
     private int findDetonatorSlot() {
-        if (preferTotem.isEnabled()) {
+        if (preferTotem.getValue()) {
             int totemSlot = InventoryUtils.findItemWithPredicateInHotbar(item -> item.is(Items.TOTEM_OF_UNDYING));
             if (totemSlot != -1) {
                 return totemSlot;
             }
         }
-        return fallbackSlot.getIntValue() - 1;
+        return fallbackSlot.getValue() - 1;
     }
 
     private boolean isStrictMode() {
@@ -515,7 +505,7 @@ public class AutoAnchor extends Feature {
 
     private int getActionGap() {
         if (isStrictMode()) {
-            return strictActionGap.getIntValue();
+            return strictActionGap.getValue();
         }
         return 1;
     }
@@ -529,10 +519,10 @@ public class AutoAnchor extends Feature {
     }
 
     private void reset() {
-        if (restoreSlotOnCancel.isEnabled() && originalSlot != -1 && mc.player != null) {
+        if (restoreSlotOnCancel.getValue() && originalSlot != -1 && mc.player != null) {
             InventoryUtils.setInvSlot(originalSlot);
         }
-        SwapStateManager.cancel(this, restoreSlotOnCancel.isEnabled());
+        SwapStateManager.cancel(this, restoreSlotOnCancel.getValue());
         currentState = State.IDLE;
         stateTimer = 0;
         actionCooldown = 0;
